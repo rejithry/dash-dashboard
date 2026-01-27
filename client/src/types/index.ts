@@ -1,0 +1,82 @@
+export interface Dashboard {
+  id: string;
+  name: string;
+  description: string;
+  layout: LayoutItem[];
+  widgets?: Widget[];
+  created_at: string;
+  updated_at: string;
+}
+
+export interface LayoutItem {
+  i: string;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  minW?: number;
+  minH?: number;
+}
+
+export interface Widget {
+  id: string;
+  dashboard_id: string;
+  title: string;
+  type: WidgetType;
+  config: WidgetConfig;
+  connection_id: string | null;
+  query: string;
+  chart_options: ChartOptions;
+  created_at: string;
+  updated_at: string;
+}
+
+export type WidgetType = 'line' | 'bar' | 'pie' | 'area' | 'table' | 'stat';
+
+export interface WidgetConfig {
+  refreshInterval?: number;
+  [key: string]: unknown;
+}
+
+export interface ChartOptions {
+  title?: string;
+  colors?: string[];
+  legend?: {
+    position: 'top' | 'bottom' | 'left' | 'right' | 'none';
+  };
+  hAxis?: {
+    title?: string;
+  };
+  vAxis?: {
+    title?: string;
+  };
+  [key: string]: unknown;
+}
+
+export interface Connection {
+  id: string;
+  name: string;
+  type: ConnectionType;
+  host: string;
+  port: number;
+  database: string;
+  username: string;
+  password: string;
+  ssl: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export type ConnectionType = 'postgresql' | 'mysql' | 'sqlite';
+
+export interface QueryResult {
+  columns: string[];
+  rows: Record<string, unknown>[];
+  rowCount: number;
+}
+
+export interface ApiResponse<T> {
+  success: boolean;
+  data?: T;
+  error?: string;
+}

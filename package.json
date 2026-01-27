@@ -1,0 +1,17 @@
+{
+  "name": "dash",
+  "version": "1.0.0",
+  "description": "Dashboard application with drag-and-drop widgets and Google Charts",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently \"npm run dev:server\" \"npm run dev:client\"",
+    "dev:server": "cd server && npm run dev",
+    "dev:client": "cd client && npm run dev",
+    "install:all": "npm install && cd server && npm install && cd ../client && npm install",
+    "build": "cd client && npm run build",
+    "start": "cd server && npm run start"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  }
+}
