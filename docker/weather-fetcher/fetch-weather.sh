@@ -13,15 +13,20 @@ CITIES["Atlanta"]="33.7490,-84.3880"
 CITIES["Toronto"]="43.6532,-79.3832"
 CITIES["Trivandrum"]="8.5241,76.9366"
 
-# MySQL connection parameters
-MYSQL_CMD="mysql -h ${MYSQL_HOST} -P ${MYSQL_PORT} -u ${MYSQL_USER} -p${MYSQL_PASSWORD} ${MYSQL_DATABASE}"
-
 echo "Weather Fetcher started!"
 echo "Fetching weather data every 30 seconds for: ${!CITIES[@]}"
 
 # Wait for MySQL to be fully ready
 echo "Waiting for MySQL to be ready..."
-sleep 5
+sleep 10
+
+# Test MySQL connection
+echo "Testing MySQL connection..."
+until mysql -h "${MYSQL_HOST}" -P "${MYSQL_PORT}" -u "${MYSQL_USER}" -p"${MYSQL_PASSWORD}" -e "SELECT 1" "${MYSQL_DATABASE}" > /dev/null 2>&1; do
+    echo "MySQL is unavailable - waiting..."
+    sleep 5
+done
+echo "MySQL connection successful!"
 
 while true; do
     echo ""
@@ -43,10 +48,10 @@ while true; do
             temperature=$(echo "$response" | jq -r '.current.temperature_2m // empty')
             
             if [ -n "$temperature" ] && [ "$temperature" != "null" ]; then
-                # Insert into MySQL
-                insert_query="INSERT INTO weather (city, temperature, timestamp) VALUES ('${city}', ${temperature}, NOW());"
-                
-                echo "$insert_query" | $MYSQL_CMD 2>/dev/null
+                # Insert into MySQL using heredoc to avoid escaping issues
+                mysql -h "${MYSQL_HOST}" -P "${MYSQL_PORT}" -u "${MYSQL_USER}" -p"${MYSQL_PASSWORD}" "${MYSQL_DATABASE}" <<EOF
+INSERT INTO weather (city, temperature, timestamp) VALUES ('${city}', ${temperature}, NOW());
+EOF
                 
                 if [ $? -eq 0 ]; then
                     echo "✓ ${city}: ${temperature}°C"
@@ -55,6 +60,7 @@ while true; do
                 fi
             else
                 echo "✗ ${city}: Could not parse temperature from API response"
+                echo "  Response: $response"
             fi
         else
             echo "✗ ${city}: Failed to fetch from API"
@@ -67,7 +73,7 @@ while true; do
     # Show recent entries
     echo ""
     echo "Recent entries in database:"
-    echo "SELECT city, temperature, timestamp FROM weather ORDER BY timestamp DESC LIMIT 7;" | $MYSQL_CMD 2>/dev/null
+    mysql -h "${MYSQL_HOST}" -P "${MYSQL_PORT}" -u "${MYSQL_USER}" -p"${MYSQL_PASSWORD}" "${MYSQL_DATABASE}" -e "SELECT city, temperature, timestamp FROM weather ORDER BY timestamp DESC LIMIT 7;" 2>&1
     
     echo ""
     echo "Sleeping for 30 seconds..."

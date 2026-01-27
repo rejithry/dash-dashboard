@@ -8,6 +8,9 @@ CREATE TABLE IF NOT EXISTS weather (
     INDEX idx_timestamp (timestamp)
 );
 
+-- Update dashuser to use mysql_native_password (compatible with MariaDB client)
+ALTER USER 'dashuser'@'%' IDENTIFIED WITH mysql_native_password BY 'dashpassword';
+
 -- Grant privileges to dashuser
 GRANT ALL PRIVILEGES ON dashboard.* TO 'dashuser'@'%';
 FLUSH PRIVILEGES;
