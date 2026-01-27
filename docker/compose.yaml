@@ -1,0 +1,47 @@
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: dash-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: dashboard
+      MYSQL_USER: dashuser
+      MYSQL_PASSWORD: dashpassword
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-prootpassword"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    networks:
+      - dash-network
+
+  weather-fetcher:
+    build:
+      context: ./weather-fetcher
+      dockerfile: Dockerfile
+    container_name: dash-weather-fetcher
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      MYSQL_HOST: mysql
+      MYSQL_PORT: 3306
+      MYSQL_DATABASE: dashboard
+      MYSQL_USER: dashuser
+      MYSQL_PASSWORD: dashpassword
+    networks:
+      - dash-network
+    restart: unless-stopped
+
+volumes:
+  mysql-data:
+
+networks:
+  dash-network:
+    driver: bridge

@@ -120,6 +120,21 @@ dash/
 4. **Arrange Widgets**: Drag widgets to reorder, resize from corners
 5. **Manage Connections**: Go to Connections page to add database credentials
 
+## Docker Setup
+
+The project includes a Docker Compose setup with MySQL and a weather data fetcher:
+
+```bash
+cd docker
+docker compose up -d
+```
+
+This starts:
+- **MySQL 8.0** on port 3306 with a `weather` table
+- **Weather Fetcher** that inserts real-time temperature data every 30 seconds for 7 cities
+
+See [docker/README.md](docker/README.md) for more details.
+
 ## License
 
 MIT
