@@ -8,83 +8,121 @@ interface ChartRendererProps {
   options: ChartOptions;
 }
 
-// Regex patterns to detect date/timestamp strings
-const datePatterns = [
-  /^\d{4}-\d{2}-\d{2}$/, // YYYY-MM-DD
-  /^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}/, // YYYY-MM-DD HH:MM:SS or YYYY-MM-DDTHH:MM:SS
-  /^\d{4}\/\d{2}\/\d{2}/, // YYYY/MM/DD
-  /^\d{2}\/\d{2}\/\d{4}/, // MM/DD/YYYY
-];
-
 // Check if a value looks like a date/timestamp string
 function isDateString(value: unknown): boolean {
   if (typeof value !== 'string') return false;
-  return datePatterns.some(pattern => pattern.test(value));
+  
+  // Common date patterns
+  const datePatterns = [
+    /^\d{4}-\d{2}-\d{2}$/, // YYYY-MM-DD
+    /^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}/, // YYYY-MM-DD HH:MM or YYYY-MM-DDTHH:MM
+    /^\d{4}\/\d{2}\/\d{2}/, // YYYY/MM/DD
+  ];
+  
+  if (datePatterns.some(pattern => pattern.test(value))) {
+    return true;
+  }
+  
+  // Also try parsing - if it creates a valid date, it's a date string
+  const date = new Date(value);
+  if (!isNaN(date.getTime()) && value.includes('-') && value.length > 8) {
+    return true;
+  }
+  
+  return false;
+}
+
+// Check if a string looks like a number
+function isNumericString(value: unknown): boolean {
+  if (typeof value !== 'string') return false;
+  if (value.trim() === '') return false;
+  return !isNaN(Number(value)) && !isDateString(value);
 }
 
 // Parse a date string to a Date object
 function parseDate(value: string): Date {
-  // Handle MySQL datetime format: "2026-01-27 00:17:27"
-  const date = new Date(value.replace(' ', 'T'));
-  return date;
+  return new Date(value);
 }
 
 // Determine column type based on first row values
-function getColumnType(value: unknown): 'date' | 'datetime' | 'number' | 'string' {
+function getColumnType(value: unknown): 'datetime' | 'number' | 'string' {
   if (typeof value === 'number') return 'number';
-  if (isDateString(value)) return 'datetime';
+  if (typeof value === 'string') {
+    if (isDateString(value)) return 'datetime';
+    if (isNumericString(value)) return 'number';
+  }
   return 'string';
 }
 
+// Convert value based on detected type
+function convertValue(value: unknown, colType: 'datetime' | 'number' | 'string'): Date | number | string | null {
+  if (value === null || value === undefined) return null;
+  
+  if (colType === 'datetime' && typeof value === 'string') {
+    return parseDate(value);
+  }
+  
+  if (colType === 'number') {
+    if (typeof value === 'number') return value;
+    if (typeof value === 'string') return Number(value);
+  }
+  
+  return String(value);
+}
+
 // Transform data for charts - with proper column types for Google Charts
-function transformChartData(data: QueryResult): (
-  | { type: string; label: string }
-  | string 
-  | number 
-  | Date 
-  | null
-)[][] {
+function transformChartData(data: QueryResult): unknown[][] {
   if (data.rows.length === 0) {
     return [data.columns];
   }
 
   // Analyze first row to determine column types
   const firstRow = data.rows[0];
-  const columnTypes: ('date' | 'datetime' | 'number' | 'string')[] = data.columns.map(col => 
+  const columnTypes: ('datetime' | 'number' | 'string')[] = data.columns.map(col => 
     getColumnType(firstRow[col])
   );
 
-  // Create header row with column type specifications
+  // Create header row with column type specifications for Google Charts
   const headerRow = data.columns.map((col, i) => ({
     type: columnTypes[i],
     label: col
   }));
 
-  // Transform data rows
+  // Transform data rows with proper type conversion
   const dataRows = data.rows.map(row => 
-    data.columns.map((col, i) => {
-      const value = row[col];
-      const colType = columnTypes[i];
-      
-      if (colType === 'datetime' || colType === 'date') {
-        if (typeof value === 'string') {
-          return parseDate(value);
-        }
-      }
-      
-      return value as string | number | null;
-    })
+    data.columns.map((col, i) => convertValue(row[col], columnTypes[i]))
   );
 
   return [headerRow, ...dataRows];
 }
 
-// Simple transform without type detection (for pie charts, etc.)
-function transformSimpleData(data: QueryResult): (string | number | null)[][] {
-  return [
-    data.columns,
-    ...data.rows.map(row => data.columns.map(col => row[col] as string | number | null))
-  ];
+// Simple transform without type detection (for pie charts that need string labels)
+function transformSimpleData(data: QueryResult): unknown[][] {
+  if (data.rows.length === 0) {
+    return [data.columns];
+  }
+
+  // For simple data, just convert numeric strings to numbers
+  const firstRow = data.rows[0];
+  const columnTypes = data.columns.map((col, i) => {
+    if (i === 0) return 'string'; // First column is always label for pie/bar
+    const value = firstRow[col];
+    if (typeof value === 'number') return 'number';
+    if (isNumericString(value)) return 'number';
+    return 'string';
+  });
+
+  const dataRows = data.rows.map(row =>
+    data.columns.map((col, i) => {
+      const value = row[col];
+      if (columnTypes[i] === 'number' && typeof value === 'string') {
+        return Number(value);
+      }
+      return value;
+    })
+  );
+
+  return [data.columns, ...dataRows];
 }
 
 export default function ChartRenderer({ type, data, options }: ChartRendererProps) {
@@ -92,7 +130,7 @@ export default function ChartRenderer({ type, data, options }: ChartRendererProp
   
   const baseOptions = {
     backgroundColor: 'transparent',
-    chartArea: { width: '85%', height: '75%' },
+    chartArea: { width: '85%', height: '70%' },
     legend: { 
       position: options.legend?.position || 'bottom',
       textStyle: { 
@@ -107,10 +145,12 @@ export default function ChartRenderer({ type, data, options }: ChartRendererProp
     },
     hAxis: {
       title: options.hAxis?.title,
-      textStyle: { color: theme === 'dark' ? '#94a3b8' : '#64748b' },
+      textStyle: { color: theme === 'dark' ? '#94a3b8' : '#64748b', fontSize: 10 },
       titleTextStyle: { color: theme === 'dark' ? '#94a3b8' : '#64748b' },
       gridlines: { color: theme === 'dark' ? '#334155' : '#e2e8f0' },
-      format: 'MMM d, HH:mm',
+      format: 'HH:mm',
+      slantedText: true,
+      slantedTextAngle: 45,
     },
     vAxis: {
       title: options.vAxis?.title,
@@ -151,6 +191,9 @@ export default function ChartRenderer({ type, data, options }: ChartRendererProp
 
 function LineChart({ data, options }: { data: QueryResult; options: Record<string, unknown> }) {
   const chartData = transformChartData(data);
+  
+  // Debug: log the transformed data
+  console.log('LineChart transformed data:', chartData);
 
   return (
     <Chart
@@ -168,7 +211,6 @@ function LineChart({ data, options }: { data: QueryResult; options: Record<strin
 }
 
 function BarChart({ data, options }: { data: QueryResult; options: Record<string, unknown> }) {
-  // Bar charts typically use string categories, so use simple transform
   const chartData = transformSimpleData(data);
 
   return (
@@ -183,7 +225,6 @@ function BarChart({ data, options }: { data: QueryResult; options: Record<string
 }
 
 function PieChart({ data, options }: { data: QueryResult; options: Record<string, unknown> }) {
-  // Pie charts use string labels
   const chartData = transformSimpleData(data);
 
   return (
