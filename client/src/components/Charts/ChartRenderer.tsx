@@ -8,6 +8,63 @@ interface ChartRendererProps {
   options: ChartOptions;
 }
 
+// Regex patterns to detect date/timestamp strings
+const datePatterns = [
+  /^\d{4}-\d{2}-\d{2}$/, // YYYY-MM-DD
+  /^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}/, // YYYY-MM-DD HH:MM:SS or YYYY-MM-DDTHH:MM:SS
+  /^\d{4}\/\d{2}\/\d{2}/, // YYYY/MM/DD
+  /^\d{2}\/\d{2}\/\d{4}/, // MM/DD/YYYY
+];
+
+// Check if a value looks like a date/timestamp string
+function isDateString(value: unknown): boolean {
+  if (typeof value !== 'string') return false;
+  return datePatterns.some(pattern => pattern.test(value));
+}
+
+// Parse a date string to a Date object
+function parseDate(value: unknown): Date | unknown {
+  if (typeof value !== 'string') return value;
+  
+  // Try to parse as date
+  const date = new Date(value);
+  if (!isNaN(date.getTime())) {
+    return date;
+  }
+  return value;
+}
+
+// Transform data for charts - converts date strings to Date objects
+function transformChartData(data: QueryResult): (string | number | Date | null)[][] {
+  if (data.rows.length === 0) {
+    return [data.columns];
+  }
+
+  // Check first row to determine which columns contain dates
+  const firstRow = data.rows[0];
+  const dateColumns = new Set<string>();
+  
+  for (const col of data.columns) {
+    const value = firstRow[col];
+    if (isDateString(value)) {
+      dateColumns.add(col);
+    }
+  }
+
+  // Transform the data
+  const rows = data.rows.map(row => 
+    data.columns.map(col => {
+      const value = row[col];
+      if (dateColumns.has(col)) {
+        return parseDate(value);
+      }
+      return value;
+    })
+  );
+
+  return [data.columns, ...rows] as (string | number | Date | null)[][];
+}
+
 export default function ChartRenderer({ type, data, options }: ChartRendererProps) {
   const { theme } = useTheme();
   
@@ -30,7 +87,8 @@ export default function ChartRenderer({ type, data, options }: ChartRendererProp
       title: options.hAxis?.title,
       textStyle: { color: theme === 'dark' ? '#94a3b8' : '#64748b' },
       titleTextStyle: { color: theme === 'dark' ? '#94a3b8' : '#64748b' },
-      gridlines: { color: theme === 'dark' ? '#334155' : '#e2e8f0' }
+      gridlines: { color: theme === 'dark' ? '#334155' : '#e2e8f0' },
+      format: 'MMM d, HH:mm', // Format for date/time axis
     },
     vAxis: {
       title: options.vAxis?.title,
@@ -70,10 +128,7 @@ export default function ChartRenderer({ type, data, options }: ChartRendererProp
 }
 
 function LineChart({ data, options }: { data: QueryResult; options: Record<string, unknown> }) {
-  const chartData = [
-    data.columns,
-    ...data.rows.map(row => data.columns.map(col => row[col]))
-  ];
+  const chartData = transformChartData(data);
 
   return (
     <Chart
@@ -91,10 +146,7 @@ function LineChart({ data, options }: { data: QueryResult; options: Record<strin
 }
 
 function BarChart({ data, options }: { data: QueryResult; options: Record<string, unknown> }) {
-  const chartData = [
-    data.columns,
-    ...data.rows.map(row => data.columns.map(col => row[col]))
-  ];
+  const chartData = transformChartData(data);
 
   return (
     <Chart
@@ -108,10 +160,7 @@ function BarChart({ data, options }: { data: QueryResult; options: Record<string
 }
 
 function PieChart({ data, options }: { data: QueryResult; options: Record<string, unknown> }) {
-  const chartData = [
-    data.columns,
-    ...data.rows.map(row => data.columns.map(col => row[col]))
-  ];
+  const chartData = transformChartData(data);
 
   return (
     <Chart
@@ -129,10 +178,7 @@ function PieChart({ data, options }: { data: QueryResult; options: Record<string
 }
 
 function AreaChart({ data, options }: { data: QueryResult; options: Record<string, unknown> }) {
-  const chartData = [
-    data.columns,
-    ...data.rows.map(row => data.columns.map(col => row[col]))
-  ];
+  const chartData = transformChartData(data);
 
   return (
     <Chart
