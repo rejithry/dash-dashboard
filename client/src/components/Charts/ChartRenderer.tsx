@@ -23,46 +23,68 @@ function isDateString(value: unknown): boolean {
 }
 
 // Parse a date string to a Date object
-function parseDate(value: unknown): Date | unknown {
-  if (typeof value !== 'string') return value;
-  
-  // Try to parse as date
-  const date = new Date(value);
-  if (!isNaN(date.getTime())) {
-    return date;
-  }
-  return value;
+function parseDate(value: string): Date {
+  // Handle MySQL datetime format: "2026-01-27 00:17:27"
+  const date = new Date(value.replace(' ', 'T'));
+  return date;
 }
 
-// Transform data for charts - converts date strings to Date objects
-function transformChartData(data: QueryResult): (string | number | Date | null)[][] {
+// Determine column type based on first row values
+function getColumnType(value: unknown): 'date' | 'datetime' | 'number' | 'string' {
+  if (typeof value === 'number') return 'number';
+  if (isDateString(value)) return 'datetime';
+  return 'string';
+}
+
+// Transform data for charts - with proper column types for Google Charts
+function transformChartData(data: QueryResult): (
+  | { type: string; label: string }
+  | string 
+  | number 
+  | Date 
+  | null
+)[][] {
   if (data.rows.length === 0) {
     return [data.columns];
   }
 
-  // Check first row to determine which columns contain dates
+  // Analyze first row to determine column types
   const firstRow = data.rows[0];
-  const dateColumns = new Set<string>();
-  
-  for (const col of data.columns) {
-    const value = firstRow[col];
-    if (isDateString(value)) {
-      dateColumns.add(col);
-    }
-  }
+  const columnTypes: ('date' | 'datetime' | 'number' | 'string')[] = data.columns.map(col => 
+    getColumnType(firstRow[col])
+  );
 
-  // Transform the data
-  const rows = data.rows.map(row => 
-    data.columns.map(col => {
+  // Create header row with column type specifications
+  const headerRow = data.columns.map((col, i) => ({
+    type: columnTypes[i],
+    label: col
+  }));
+
+  // Transform data rows
+  const dataRows = data.rows.map(row => 
+    data.columns.map((col, i) => {
       const value = row[col];
-      if (dateColumns.has(col)) {
-        return parseDate(value);
+      const colType = columnTypes[i];
+      
+      if (colType === 'datetime' || colType === 'date') {
+        if (typeof value === 'string') {
+          return parseDate(value);
+        }
       }
-      return value;
+      
+      return value as string | number | null;
     })
   );
 
-  return [data.columns, ...rows] as (string | number | Date | null)[][];
+  return [headerRow, ...dataRows];
+}
+
+// Simple transform without type detection (for pie charts, etc.)
+function transformSimpleData(data: QueryResult): (string | number | null)[][] {
+  return [
+    data.columns,
+    ...data.rows.map(row => data.columns.map(col => row[col] as string | number | null))
+  ];
 }
 
 export default function ChartRenderer({ type, data, options }: ChartRendererProps) {
@@ -88,7 +110,7 @@ export default function ChartRenderer({ type, data, options }: ChartRendererProp
       textStyle: { color: theme === 'dark' ? '#94a3b8' : '#64748b' },
       titleTextStyle: { color: theme === 'dark' ? '#94a3b8' : '#64748b' },
       gridlines: { color: theme === 'dark' ? '#334155' : '#e2e8f0' },
-      format: 'MMM d, HH:mm', // Format for date/time axis
+      format: 'MMM d, HH:mm',
     },
     vAxis: {
       title: options.vAxis?.title,
@@ -146,7 +168,8 @@ function LineChart({ data, options }: { data: QueryResult; options: Record<strin
 }
 
 function BarChart({ data, options }: { data: QueryResult; options: Record<string, unknown> }) {
-  const chartData = transformChartData(data);
+  // Bar charts typically use string categories, so use simple transform
+  const chartData = transformSimpleData(data);
 
   return (
     <Chart
@@ -160,7 +183,8 @@ function BarChart({ data, options }: { data: QueryResult; options: Record<string
 }
 
 function PieChart({ data, options }: { data: QueryResult; options: Record<string, unknown> }) {
-  const chartData = transformChartData(data);
+  // Pie charts use string labels
+  const chartData = transformSimpleData(data);
 
   return (
     <Chart
