@@ -2,20 +2,22 @@ import { v4 as uuidv4 } from 'uuid';
 import { getDatabase, saveDatabase } from '../db/schema.js';
 import type { Dashboard, LayoutItem, CreateDashboardRequest, UpdateDashboardRequest } from '../types/index.js';
 
+interface DashboardRow {
+  id: string;
+  name: string;
+  description: string;
+  layout: string;
+  created_at: string;
+  updated_at: string;
+}
+
 export function getAllDashboards(): Dashboard[] {
   const db = getDatabase();
   const stmt = db.prepare('SELECT * FROM dashboards ORDER BY updated_at DESC');
   const results: Dashboard[] = [];
   
   while (stmt.step()) {
-    const row = stmt.getAsObject() as {
-      id: string;
-      name: string;
-      description: string;
-      layout: string;
-      created_at: string;
-      updated_at: string;
-    };
+    const row = stmt.getAsObject() as unknown as DashboardRow;
     results.push({
       ...row,
       layout: JSON.parse(row.layout) as LayoutItem[]
@@ -32,14 +34,7 @@ export function getDashboardById(id: string): Dashboard | null {
   stmt.bind([id]);
   
   if (stmt.step()) {
-    const row = stmt.getAsObject() as {
-      id: string;
-      name: string;
-      description: string;
-      layout: string;
-      created_at: string;
-      updated_at: string;
-    };
+    const row = stmt.getAsObject() as unknown as DashboardRow;
     stmt.free();
     return {
       ...row,

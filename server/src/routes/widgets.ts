@@ -39,7 +39,8 @@ router.post('/', (req: Request, res: Response) => {
 // GET /api/widgets/:id - Get widget by ID
 router.get('/:id', (req: Request, res: Response) => {
   try {
-    const widget = widgetService.getWidgetById(req.params.id);
+    const id = req.params.id as string;
+    const widget = widgetService.getWidgetById(id);
     
     if (!widget) {
       res.status(404).json({ success: false, error: 'Widget not found' });
@@ -58,8 +59,9 @@ router.get('/:id', (req: Request, res: Response) => {
 // PUT /api/widgets/:id - Update widget
 router.put('/:id', (req: Request, res: Response) => {
   try {
+    const id = req.params.id as string;
     const data: UpdateWidgetRequest = req.body;
-    const widget = widgetService.updateWidget(req.params.id, data);
+    const widget = widgetService.updateWidget(id, data);
     
     if (!widget) {
       res.status(404).json({ success: false, error: 'Widget not found' });
@@ -78,7 +80,8 @@ router.put('/:id', (req: Request, res: Response) => {
 // DELETE /api/widgets/:id - Delete widget
 router.delete('/:id', (req: Request, res: Response) => {
   try {
-    const deleted = widgetService.deleteWidget(req.params.id);
+    const id = req.params.id as string;
+    const deleted = widgetService.deleteWidget(id);
     
     if (!deleted) {
       res.status(404).json({ success: false, error: 'Widget not found' });
@@ -97,7 +100,8 @@ router.delete('/:id', (req: Request, res: Response) => {
 // POST /api/widgets/:id/execute - Execute widget query
 router.post('/:id/execute', async (req: Request, res: Response) => {
   try {
-    const widget = widgetService.getWidgetById(req.params.id);
+    const id = req.params.id as string;
+    const widget = widgetService.getWidgetById(id);
     
     if (!widget) {
       res.status(404).json({ success: false, error: 'Widget not found' });

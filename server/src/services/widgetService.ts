@@ -37,7 +37,7 @@ export function getWidgetsByDashboard(dashboardId: string): Widget[] {
   
   const results: Widget[] = [];
   while (stmt.step()) {
-    const row = stmt.getAsObject() as WidgetRow;
+    const row = stmt.getAsObject() as unknown as WidgetRow;
     results.push(rowToWidget(row));
   }
   stmt.free();
@@ -51,7 +51,7 @@ export function getWidgetById(id: string): Widget | null {
   stmt.bind([id]);
   
   if (stmt.step()) {
-    const row = stmt.getAsObject() as WidgetRow;
+    const row = stmt.getAsObject() as unknown as WidgetRow;
     stmt.free();
     return rowToWidget(row);
   }

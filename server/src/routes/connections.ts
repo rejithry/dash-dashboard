@@ -26,7 +26,8 @@ router.get('/', (_req: Request, res: Response) => {
 // GET /api/connections/:id - Get connection by ID
 router.get('/:id', (req: Request, res: Response) => {
   try {
-    const connection = connectionService.getConnectionById(req.params.id);
+    const id = req.params.id as string;
+    const connection = connectionService.getConnectionById(id);
     
     if (!connection) {
       res.status(404).json({ success: false, error: 'Connection not found' });
@@ -77,8 +78,9 @@ router.post('/', (req: Request, res: Response) => {
 // PUT /api/connections/:id - Update connection
 router.put('/:id', (req: Request, res: Response) => {
   try {
+    const id = req.params.id as string;
     const data: UpdateConnectionRequest = req.body;
-    const connection = connectionService.updateConnection(req.params.id, data);
+    const connection = connectionService.updateConnection(id, data);
     
     if (!connection) {
       res.status(404).json({ success: false, error: 'Connection not found' });
@@ -100,7 +102,8 @@ router.put('/:id', (req: Request, res: Response) => {
 // DELETE /api/connections/:id - Delete connection
 router.delete('/:id', (req: Request, res: Response) => {
   try {
-    const deleted = connectionService.deleteConnection(req.params.id);
+    const id = req.params.id as string;
+    const deleted = connectionService.deleteConnection(id);
     
     if (!deleted) {
       res.status(404).json({ success: false, error: 'Connection not found' });
@@ -119,7 +122,8 @@ router.delete('/:id', (req: Request, res: Response) => {
 // POST /api/connections/:id/test - Test connection
 router.post('/:id/test', async (req: Request, res: Response) => {
   try {
-    const connection = connectionService.getConnectionById(req.params.id);
+    const id = req.params.id as string;
+    const connection = connectionService.getConnectionById(id);
     
     if (!connection) {
       res.status(404).json({ success: false, error: 'Connection not found' });

@@ -38,7 +38,7 @@ export function getAllConnections(): Connection[] {
   
   const results: Connection[] = [];
   while (stmt.step()) {
-    const row = stmt.getAsObject() as ConnectionRow;
+    const row = stmt.getAsObject() as unknown as ConnectionRow;
     results.push(rowToConnection(row));
   }
   stmt.free();
@@ -52,7 +52,7 @@ export function getConnectionById(id: string): Connection | null {
   stmt.bind([id]);
   
   if (stmt.step()) {
-    const row = stmt.getAsObject() as ConnectionRow;
+    const row = stmt.getAsObject() as unknown as ConnectionRow;
     stmt.free();
     return rowToConnection(row);
   }

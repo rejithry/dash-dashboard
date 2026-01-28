@@ -21,13 +21,14 @@ router.get('/', (_req: Request, res: Response) => {
 // GET /api/dashboards/:id - Get dashboard with widgets
 router.get('/:id', (req: Request, res: Response) => {
   try {
-    const dashboard = dashboardService.getDashboardById(req.params.id);
+    const id = req.params.id as string;
+    const dashboard = dashboardService.getDashboardById(id);
     if (!dashboard) {
       res.status(404).json({ success: false, error: 'Dashboard not found' });
       return;
     }
     
-    const widgets = widgetService.getWidgetsByDashboard(req.params.id);
+    const widgets = widgetService.getWidgetsByDashboard(id);
     res.json({ success: true, data: { ...dashboard, widgets } });
   } catch (error) {
     res.status(500).json({ 
@@ -60,8 +61,9 @@ router.post('/', (req: Request, res: Response) => {
 // PUT /api/dashboards/:id - Update dashboard
 router.put('/:id', (req: Request, res: Response) => {
   try {
+    const id = req.params.id as string;
     const data: UpdateDashboardRequest = req.body;
-    const dashboard = dashboardService.updateDashboard(req.params.id, data);
+    const dashboard = dashboardService.updateDashboard(id, data);
     
     if (!dashboard) {
       res.status(404).json({ success: false, error: 'Dashboard not found' });
@@ -80,7 +82,8 @@ router.put('/:id', (req: Request, res: Response) => {
 // DELETE /api/dashboards/:id - Delete dashboard
 router.delete('/:id', (req: Request, res: Response) => {
   try {
-    const deleted = dashboardService.deleteDashboard(req.params.id);
+    const id = req.params.id as string;
+    const deleted = dashboardService.deleteDashboard(id);
     
     if (!deleted) {
       res.status(404).json({ success: false, error: 'Dashboard not found' });
